@@ -1,0 +1,237 @@
+        .btn-action {
+            background: #ffffff; color: #050508; border: none; font-family: inherit;
+            padding: 14px 35px; font-weight: bold; font-size: 1rem; border-radius: 4px;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2); transition: all 0.2s;
+        }
+        .btn-action:hover { background: #dddddd; transform: translateY(-2px); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Cinematic Intro Sequence Screen -->
+    <div id="intro-screen">
+        <div class="intro-text">Firewall Defender</div>
+        <div class="intro-sub">System Boot Sequence</div>
+    </div>
+
+    <div id="grid-bg"></div>
+
+    <header>
+        <div class="brand">
+            <div class="title">Virus Attack v2</div>
+            <div class="high-score">System Best: <span id="high-score-val">0</span></div>
+        </div>
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">Score</div>
+                <div id="score-val" class="stat-val" style="color: #ffffff;">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Threat Level</div>
+                <div id="threat-val" class="stat-val" style="color: #00ffcc;">1</div>
+            </div>
+            <div id="health-container">
+                <div class="stat-label">Firewall Integrity</div>
+                <div id="health-bar-wrap">
+                    <div id="health-bar"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main id="game-area">
+        <button id="emp-btn">EMP Ready</button>
+
+        <!-- Menu Overlay -->
+        <div id="menu-overlay">
+            <div id="menu-title" class="bold-banner">System Compromised</div>
+            <div id="menu-sub" class="subtitle">Viruses are breaching the mainframe root directories. Initialize cybernetic clean-up routines immediately.</div>
+            
+            <div class="rules-summary">
+                <ul>
+                    <li><strong style="color: #ff3366;">RED (Standard):</strong> Quick mutations. Click once to delete.</li>
+                    <li><strong style="color: #3399ff;">BLUE (Tank):</strong> Heavy memory load. Requires 3 clicks to clean.</li>
+                    <li><strong style="color: #cc33ff;">PURPLE (Glitch):</strong> Fast, chaotic warping. Explodes instantly.</li>
+                    <li><strong style="color: #33cc66;">GREEN (Decoy):</strong> System friendly. Avoid clicking at all costs!</li>
+                </ul>
+            </div>
+            <button id="start-btn" class="btn-action">Purge System</button>
+        </div>
+    </main>
+
+    <script>
+        // Game Engine Configuration & State
+        const CONFIG = {
+            baseSpawnInterval: 1400,
+            minSpawnInterval: 400,
+            intervalDecrement: 45,
+            empCost: 15,
+            maxHealth: 100
+        };
+
+        const STATE = {
+            score: 0,
+            highScore: parseInt(localStorage.getItem('fw_high_score')) || 0,
+            health: CONFIG.maxHealth,
+            level: 1,
+            spawnInterval: CONFIG.baseSpawnInterval,
+            empCharge: 0,
+            activeViruses: [],
+            isGameRunning: false
+        };
+
+        // DOM Element Registry
+        const DOM = {
+            introScreen: document.getElementById('intro-screen'),
+            menuOverlay: document.getElementById('menu-overlay'),
+            menuTitle: document.getElementById('menu-title'),
+            menuSub: document.getElementById('menu-sub'),
+            startBtn: document.getElementById('start-btn'),
+            scoreVal: document.getElementById('score-val'),
+            highScoreVal: document.getElementById('high-score-val'),
+            threatVal: document.getElementById('threat-val'),
+            healthBar: document.getElementById('health-bar'),
+            gameArea: document.getElementById('game-area'),
+            empBtn: document.getElementById('emp-btn')
+        };
+
+        // Class Definitions for Specialized Viruses
+        const VIRUS_PROFILES = [
+            { type: 'standard', color: '#ff3366', hp: 1, reward: 1, size: 55, className: 'v-standard', label: 'STD_V' },
+            { type: 'tank', color: '#3399ff', hp: 3, reward: 3, size: 75, className: 'v-tank', label: 'MEM_LOAD' },
+            { type: 'glitch', color: '#cc33ff', hp: 1, reward: 4, size: 45, className: 'v-glitch', label: 'ERR_EXE' },
+            { type: 'decoy', color: '#33cc66', hp: 1, reward: -5, size: 50, className: 'v-decoy', label: 'SYS_SAFE' }
+        ];
+
+        let spawnTimer = null;
+        let movementTimer = null;
+
+        // --- Core Application Loops ---
+        window.addEventListener('DOMContentLoaded', () => {
+            DOM.highScoreVal.textContent = STATE.highScore;
+            
+            // Auto-clear intro sequence screen
+            setTimeout(() => {
+                DOM.introScreen.style.opacity = '0';
+                setTimeout(() => DOM.introScreen.classList.add('hidden'), 1000);
+            }, 3800);
+        });
+
+        function startGame() {
+            STATE.score = 0;
+            STATE.health = CONFIG.maxHealth;
+            STATE.level = 1;
+            STATE.spawnInterval = CONFIG.baseSpawnInterval;
+            STATE.empCharge = 0;
+            STATE.activeViruses.forEach(v => v.element.remove());
+            STATE.activeViruses = [];
+            STATE.isGameRunning = true;
+
+            updateUI();
+            DOM.menuOverlay.classList.add('hidden');
+            
+            scheduleNextSpawn();
+            movementTimer = setInterval(updateVirusPositions, 1000);
+        }
+
+        function gameOver() {
+            STATE.isGameRunning = false;
+            clearInterval(movementTimer);
+            clearTimeout(spawnTimer);
+
+            if (STATE.score > STATE.highScore) {
+                STATE.highScore = STATE.score;
+                localStorage.setItem('fw_high_score', STATE.highScore);
+                DOM.highScoreVal.textContent = STATE.highScore;
+            }
+
+            DOM.menuTitle.textContent = "Clean-up Aborted";
+            DOM.menuTitle.style.color = "#ff3366";
+            DOM.menuSub.innerHTML = `Root directory corrupted.<br>Final Purge Score: <strong>${STATE.score}</strong> (Threat Level ${STATE.level})`;
+            DOM.startBtn.textContent = "Reboot Routine";
+            DOM.menuOverlay.classList.remove('hidden');
+        }
+
+        // --- Logic Engine Mechanics ---
+        function scheduleNextSpawn() {
+            if (!STATE.isGameRunning) return;
+            spawnTimer = setTimeout(() => {
+                spawnVirus();
+                scheduleNextSpawn();
+            }, STATE.spawnInterval);
+        }
+
+        function spawnVirus() {
+            const roll = Math.random() * 100;
+            let profile;
+            
+            // Dynamic difficulty scaling rolls
+            if (roll < 55) profile = VIRUS_PROFILES[0]; // Standard
+            else if (roll < 75) profile = VIRUS_PROFILES[1]; // Tank
+            else if (roll < 90) profile = VIRUS_PROFILES[2]; // Glitch
+            else profile = VIRUS_PROFILES[3]; // Decoy
+
+            const areaWidth = DOM.gameArea.clientWidth;
+            const areaHeight = DOM.gameArea.clientHeight;
+            
+            const x = Math.random() * (areaWidth - profile.size - 40) + 20;
+            const y = Math.random() * (areaHeight - profile.size - 100) + 40;
+
+            const el = document.createElement('div');
+            el.className = `virus ${profile.className}`;
+            el.style.width = `${profile.size}px`;
+            el.style.height = `${profile.size}px`;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.style.color = profile.color;
+            el.style.border = `2px solid ${profile.color}`;
+            el.style.background = `rgba(${hexToRgb(profile.color)}, 0.05)`;
+            
+            el.innerHTML = `<div>${profile.label}</div><div class="hp-text">${profile.hp > 1 ? 'HP:' + profile.hp : ''}</div>`;
+
+            const virusObject = {
+                id: Date.now() + Math.random(),
+                element: el,
+                type: profile.type,
+                hp: profile.hp,
+                maxHp: profile.hp,
+                reward: profile.reward,
+                color: profile.color,
+                size: profile.size
+            };
+
+            el.addEventListener('mousedown', (e) => { e.stopPropagation(); damageVirus(virusObject); });
+            el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); damageVirus(virusObject); });
+
+            DOM.gameArea.appendChild(el);
+            STATE.activeViruses.push(virusObject);
+
+            // Automatic environment degradation penalty if skipped
+            if (profile.type !== 'decoy') {
+                setTimeout(() => {
+                    if (STATE.activeViruses.includes(virusObject)) {
+                        triggerLeak(virusObject);
+                    }
+                }, Math.max(2200, 6000 - (STATE.level * 350)));
+            }
+        }
+
+        function updateVirusPositions() {
+            STATE.activeViruses.forEach(v => {
+                if (v.type === 'glitch' && Math.random() > 0.4) {
+                    // Fast chaotic warping behavior
+                    v.element.style.left = `${Math.random() * (DOM.gameArea.clientWidth - v.size - 40) + 20}px`;
+                    v.element.style.top = `${Math.random() * (DOM.gameArea.clientHeight - v.size - 100) + 40}px`;
+                }
+            });
+        }
+
+        function damageVirus(virus) {
+            if (!STATE.isGameRunning) return;
+            
+            virus.hp--;
+            createVfxSplash(virus.element.offsetLeft + (virus.size/2), virus.element.offsetTop + (virus.size/2), virus.color);
+
+            if (virus.type === 'decoy') {
