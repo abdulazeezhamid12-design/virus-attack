@@ -1,1 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virus Attack</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body {
+            background-color: #0d0e15; color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden; height: 100vh; width: 100vw; display: flex; flex-direction: column;
+        }
+        /* Neon Grid Background */
+        #grid-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px; z-index: 1; pointer-events: none;
+        }
+        header {
+            position: relative; z-index: 10; padding: 15px; display: flex;
+            justify-content: space-between; align-items: center;
+            background: rgba(13, 14, 21, 0.85); border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        .title { font-weight: 900; text-transform: uppercase; letter-spacing: 2px; font-size: 1.2rem; color: #ff3366; text-shadow: 0 0 10px rgba(255, 51, 102, 0.5); }
+        .stats { display: flex; gap: 20px; font-size: 1rem; font-weight: 700; }
+        #game-area { flex: 1; position: relative; z-index: 5; cursor: crosshair; overflow: hidden; }
+        
+        /* The Viruses (Target Bubbles) */
+        .virus {
+            position: absolute; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 20px currentColor; transition: transform 0.1s ease;
+            animation: floatAnim 4s ease-in-out infinite alternate;
+        }
+        .virus:active { transform: scale(0.8); }
+        @keyframes floatAnim {
+            0% { border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%; }
+            100% { border-radius: 60% 40% 40% 60% / 60% 60% 40% 40%; }
+        }
+        
+        /* Pop Explosion Effect */
+        .splash {
+            position: absolute; pointer-events: none; border-radius: 50%;
+            animation: splashEffect 0.5s cubic-bezier(0.1, 0.8, 0.3, 1) forwards; z-index: 6;
+        }
+        @keyframes splashEffect {
+            0% { transform: scale(0); opacity: 1; border: 4px solid currentColor; }
+            50% { opacity: 0.8; }
+            100% { transform: scale(2.5); opacity: 0; border: 1px solid currentColor; background: currentColor; filter: blur(5px); }
+        }
+        
+        /* Start Menu Overlay */
+        #menu-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(7, 8, 12, 0.95); z-index: 20; display: flex;
+            flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; text-align: center;
+        }
+        .bold-banner { font-size: 3rem; font-weight: 900; text-transform: uppercase; color: #ff3366; letter-spacing: 4px; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255, 51, 102, 0.6); }
+        .subtitle { color: #8a8fbc; margin-bottom: 30px; max-width: 400px; font-size: 1rem; }
+        
+        /* The Big "Tap to Play" Button */
+        .btn {
+            background: linear-gradient(135deg, #ff3366, #ff6633); color: white; border: none;
+            padding: 15px 40px; font-size: 1.2rem; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 1px; border-radius: 50px; cursor: pointer;
+            box-shadow: 0 5px 25px rgba(255, 51, 102, 0.4); transition: all 0.2s ease;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255, 51, 102, 0.6); }
+        .btn:active { transform: translateY(1px); }
+    </style>
+</head>
+<body>
+    <div id="grid-bg"></div>
+    <header>
+        <div class="title">Virus Attack</div>
+        <div class="stats">
+            <div>SCORE: <span id="score-val">0</span></div>
+            <div>LIVES: <span id="lives-val">5</span></div>
+        </div>
+    </header>
+    <div id="game-area">
+        <!-- Start Screen Overlay -->
+        <div id="menu-overlay">
+            <h1 class="bold-banner" id="menu-title">Virus Attack</h1>
+            <p class="subtitle" id="menu-sub">System compromised. Purge the viral anomalies before they breach the core infrastructure.</p>
+            <button class="btn" id="start-btn">Initialize Purge</button>
+        </div>
+    </div>
+
+    <script>
+        const gameArea = document.getElementById('game-area'),
+              scoreVal = document.getElementById('score-val'),
+              livesVal = document.getElementById('lives-val'),
+              menuOverlay = document.getElementById('menu-overlay'),
+              startBtn = document.getElementById('start-btn'),
+              menuTitle = document.getElementById('menu-title'),
+              menuSub = document.getElementById('menu-sub');
+
+        let score = 0, lives = 5, gameActive = false, spawnInterval, virusId = 0, spawnRate = 1200;
+        const virusColors = ['#ff3366', '#33ff66', '#3366ff', '#ffff33', '#00ffff', '#ff00ff'];
+
+        // Triggered when clicking the giant button
+        function startGame() {
+            score = 0; lives = 5; spawnRate = 1200; gameActive = true;
+            scoreVal.textContent = score; livesVal.textContent = lives;
+            menuOverlay.style.display = 'none';
+            document.body.style.backgroundColor = '#0d0e15';
+            clearInterval(spawnInterval);
+            gameLoop();
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+            spawnVirus();
+            let currentRate = Math.max(400, spawnRate - (score * 15)); // Gets faster as score goes up
+            clearInterval(spawnInterval);
+            spawnInterval = setInterval(gameLoop, currentRate);
+        }
+
+        // Creates target bubbles on the screen
+        function spawnVirus() {
+            if (!gameActive) return;
+            const virus = document.createElement('div');
+            virus.classList.add('virus');
+            const size = Math.floor(Math.random() * 40) + 50,
+                  color = virusColors[Math.floor(Math.random() * virusColors.length)];
+            
+            virus.style.width = `${size}px`; virus.style.height = `${size}px`; virus.style.color = color;
+            virus.style.background = `radial-gradient(circle, rgba(13, 14, 21, 0.8) 20%, ${color} 100%)`;
+            virus.style.border = `2px solid ${color}`;
+            
+            const maxX = gameArea.clientWidth - size, maxY = gameArea.clientHeight - size;
+            virus.style.left = `${Math.floor(Math.random() * maxX)}px`;
+            virus.style.top = `${Math.floor(Math.random() * maxY)}px`;
+            
+            const id = virusId++; virus.dataset.id = id;
+            const survivalTime = Math.max(1500, 4000 - (score * 50));
+            
+            // Penalty timer if player misses the tap
+            const timeout = setTimeout(() => {
+                if (document.body.contains(virus)) { virus.remove(); loseLife(); }
+            }, survivalTime);
+
+            // Tapping/Clicking the virus targets
+            virus.addEventListener('touchstart', (e) => { e.preventDefault(); killVirus(virus, color, timeout); });
+            virus.addEventListener('mousedown', () => { killVirus(virus, color, timeout); });
+            gameArea.appendChild(virus);
+        }
+
+        // Successfully popping a virus
+        function killVirus(virus, color, timeout) {
+            if (!gameActive) return;
+            clearTimeout(timeout);
+            document.body.style.backgroundColor = color + '15'; // Screen flash color
+            setTimeout(() => { if (gameActive) document.body.style.backgroundColor = '#0d0e15'; }, 200);
+            
+            const rect = virus.getBoundingClientRect(), areaRect = gameArea.getBoundingClientRect();
+            const splash = document.createElement('div');
+            splash.classList.add('splash'); splash.style.color = color;
+            splash.style.width = virus.style.width; splash.style.height = virus.style.height;
+            splash.style.left = `${rect.left - areaRect.left}px`; splash.style.top = `${rect.top - areaRect.top}px`;
+            
+            gameArea.appendChild(splash);
+            setTimeout(() => splash.remove(), 500);
+            virus.remove(); score += 10; scoreVal.textContent = score;
+        }
+
+        function loseLife() {
+            lives--; livesVal.textContent = lives;
+            if (lives === 0) endGame();
+        }
+
+        function endGame() {
+            gameActive = false; clearInterval(spawnInterval);
+            document.querySelectorAll('.virus').forEach(v => v.remove());
+            menuTitle.textContent = "SYSTEM CRASH"; menuTitle.style.color = "#ff3333";
+            menuSub.innerHTML = `Infection successful.<br><strong style="font-size:1.5rem; color:#fff;">FINAL SCORE: ${score}</strong>`;
+            startBtn.textContent = "REBOOT & PURGE"; menuOverlay.style.display = 'flex';
+        }
+
+        startBtn.addEventListener('click', startGame);
+    </script>
+</body>
+  </html>
 
