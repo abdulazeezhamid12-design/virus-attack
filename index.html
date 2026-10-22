@@ -7,7 +7,6 @@
     <style>
         :root {
             --bg: #050508;
-            --panel: rgba(12, 12, 16, 0.9);
             --line: rgba(255,255,255,0.08);
             --text: #ffffff;
             --muted: #8a8fbc;
@@ -15,9 +14,6 @@
             --accent-2: #ff6633;
             --good: #33ff66;
             --warn: #ffff33;
-            --blue: #3366ff;
-            --cyan: #00ffff;
-            --magenta: #ff00ff;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -28,10 +24,7 @@
             color: var(--text);
             font-family: 'Consolas', 'Courier New', monospace;
         }
-        body {
-            display: flex;
-            flex-direction: column;
-        }
+        body { display: flex; flex-direction: column; }
 
         #intro-screen {
             position: fixed; inset: 0;
@@ -134,11 +127,7 @@
             text-shadow: 0 0 5px currentColor;
         }
 
-        #health-container {
-            display: flex;
-            flex-direction: column;
-            width: 120px;
-        }
+        #health-container { display: flex; flex-direction: column; width: 120px; }
         #health-bar-wrap {
             width: 100%;
             height: 8px;
@@ -175,9 +164,7 @@
             animation: floatAnim 4s ease-in-out infinite alternate;
             overflow: visible;
         }
-        .virus:hover {
-            transform: scale(1.04);
-        }
+        .virus:hover { transform: scale(1.04); }
         .virus:active { transform: scale(0.88); }
         .virus.boss {
             border-width: 3px !important;
@@ -266,33 +253,16 @@
             padding: 10px 18px;
             font-size: 0.75rem;
         }
-        .btn:hover, .sound-btn:hover {
-            transform: translateY(-2px);
-        }
-        .btn:active, .sound-btn:active {
-            transform: translateY(1px);
-        }
+        .btn:hover, .sound-btn:hover { transform: translateY(-2px); }
+        .btn:active, .sound-btn:active { transform: translateY(1px); }
 
         @media (max-width: 680px) {
-            header {
-                padding: 12px 12px;
-            }
-            .stats {
-                gap: 8px;
-            }
-            .stat-box {
-                min-width: 62px;
-                padding: 4px 8px;
-            }
-            #health-container {
-                width: 90px;
-            }
-            .subtitle {
-                font-size: 0.9rem;
-            }
-            .intro-sub {
-                letter-spacing: 3px;
-            }
+            header { padding: 12px 12px; }
+            .stats { gap: 8px; }
+            .stat-box { min-width: 62px; padding: 4px 8px; }
+            #health-container { width: 90px; }
+            .subtitle { font-size: 0.9rem; }
+            .intro-sub { letter-spacing: 3px; }
         }
     </style>
 </head>
@@ -359,7 +329,6 @@
             level: 1,
             gameActive: false,
             spawnLoop: null,
-            spawnId: 0,
             highScore: Number(localStorage.getItem('virusHighScore')) || 0,
             soundEnabled: true,
             audioCtx: null
@@ -432,22 +401,18 @@
             }
         }
 
-        function resetGame() {
-            state.score = 0;
-            state.lives = 5;
-            state.level = 1;
-            state.gameActive = true;
-            state.spawnId = 0;
-            updateHud();
-            menuOverlay.style.display = 'none';
-            document.body.style.backgroundColor = '#0d0e15';
-            clearInterval(state.spawnLoop);
-            scheduleSpawns();
-        }
-
         function currentDifficulty() {
             const levelFactor = (state.level - 1) * 120;
             return Math.max(330, 1500 - state.score * 0.35 - levelFactor);
+        }
+
+        function maybeLevelUp() {
+            const nextLevel = Math.floor(state.score / 150) + 1;
+            if (nextLevel !== state.level) {
+                state.level = nextLevel;
+                updateHud();
+                playWinSound();
+            }
         }
 
         function scheduleSpawns() {
@@ -460,13 +425,16 @@
             }, currentDifficulty());
         }
 
-        function maybeLevelUp() {
-            const nextLevel = Math.floor(state.score / 150) + 1;
-            if (nextLevel !== state.level) {
-                state.level = nextLevel;
-                updateHud();
-                playWinSound();
-            }
+        function resetGame() {
+            state.score = 0;
+            state.lives = 5;
+            state.level = 1;
+            state.gameActive = true;
+            updateHud();
+            menuOverlay.style.display = 'none';
+            document.body.style.backgroundColor = '#0d0e15';
+            clearInterval(state.spawnLoop);
+            scheduleSpawns();
         }
 
         function spawnVirus() {
@@ -483,8 +451,6 @@
 
             const size = 48 + Math.random() * 43;
             const color = virusColors[Math.floor(Math.random() * virusColors.length)];
-            const hp = 1;
-
             virus.style.width = `${size}px`;
             virus.style.height = `${size}px`;
             virus.style.color = color;
@@ -496,8 +462,7 @@
             virus.style.left = `${Math.random() * maxX}px`;
             virus.style.top = `${Math.random() * maxY}px`;
 
-            virus.dataset.hp = hp;
-            virus.dataset.maxHp = hp;
+            virus.dataset.hp = '1';
             virus.dataset.points = '10';
             virus.dataset.type = 'normal';
 
@@ -537,8 +502,7 @@
             boss.style.left = `${Math.random() * maxX}px`;
             boss.style.top = `${Math.random() * maxY}px`;
 
-            boss.dataset.hp = hp;
-            boss.dataset.maxHp = hp;
+            boss.dataset.hp = String(hp);
             boss.dataset.points = String(50 + state.level * 25);
             boss.dataset.type = 'boss';
 
@@ -635,7 +599,7 @@
         function endGame() {
             state.gameActive = false;
             clearInterval(state.spawnLoop);
-            document.querySelectorAll('.virus').forEach((v) => v.remove());
+            document.querySelectorAll('.virus').forEach(v => v.remove());
 
             menuTitle.textContent = 'SYSTEM CRASH';
             menuTitle.style.color = '#ff3333';
@@ -664,7 +628,6 @@
         });
 
         startBtn.addEventListener('click', startGame);
-
         updateHud();
 
         window.addEventListener('load', () => {
