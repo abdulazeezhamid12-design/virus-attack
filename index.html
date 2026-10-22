@@ -2,32 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virus Attack</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Firewall Defender: Virus Attack v2</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
         body {
-            background-color: #0d0e15; color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #050508; color: #ffffff;
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
             overflow: hidden; height: 100vh; width: 100vw; display: flex; flex-direction: column;
         }
-        /* Neon Grid Background */
+
+        /* --- Cinematic Intro Sequence Screen --- */
+        #intro-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000000; z-index: 100; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; transition: opacity 1s ease;
+        }
+        .intro-text {
+            font-family: 'Lucida Handwriting', 'Zapf Chancery', 'Bickham Script Pro', cursive;
+            font-size: 2.2rem; font-weight: 300; color: #ffffff; text-align: center;
+            opacity: 0; transform: scale(0.95);
+            animation: calligraphyFade 4.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.4), 0 0 40px rgba(255, 255, 255, 0.1);
+        }
+        .intro-sub {
+            font-family: 'Consolas', monospace; font-size: 0.8rem; letter-spacing: 6px;
+            color: #555555; text-transform: uppercase; margin-top: 15px; opacity: 0;
+            animation: subFade 3s 1.5s ease forwards;
+        }
+        @keyframes calligraphyFade {
+            0% { opacity: 0; filter: blur(10px); transform: scale(0.92); }
+            30% { opacity: 1; filter: blur(0px); transform: scale(1); }
+            70% { opacity: 1; filter: blur(0px); transform: scale(1); }
+            100% { opacity: 0; filter: blur(12px); transform: scale(1.05); }
+        }
+        @keyframes subFade {
+            0% { opacity: 0; letter-spacing: 0px; }
+            100% { opacity: 1; letter-spacing: 6px; }
+        }
+
         #grid-bg {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px; z-index: 1; pointer-events: none;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 30px 30px; z-index: 1; pointer-events: none;
         }
         header {
-            position: relative; z-index: 10; padding: 15px; display: flex;
+            position: relative; z-index: 10; padding: 15px 20px; display: flex;
             justify-content: space-between; align-items: center;
-            background: rgba(13, 14, 21, 0.85); border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
+            background: rgba(5, 5, 8, 0.95); border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
         }
-        .title { font-weight: 900; text-transform: uppercase; letter-spacing: 2px; font-size: 1.2rem; color: #ff3366; text-shadow: 0 0 10px rgba(255, 51, 102, 0.5); }
-        .stats { display: flex; gap: 20px; font-size: 1rem; font-weight: 700; }
+        .brand { display: flex; flex-direction: column; }
+        .title { font-weight: 900; text-transform: uppercase; letter-spacing: 2px; font-size: 1.1rem; color: #ffffff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
+        .high-score { font-size: 0.75rem; color: #666666; margin-top: 2px; }
+        .stats { display: flex; gap: 25px; font-size: 1rem; font-weight: 700; align-items: center; }
+        .stat-box { background: rgba(255,255,255,0.02); padding: 5px 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); }
+        .stat-label { color: #666666; font-size: 0.7rem; text-transform: uppercase; margin-bottom: 2px; }
+        .stat-val { font-size: 1.1rem; text-shadow: 0 0 5px currentColor; }
+
+        #health-container { display: flex; flex-direction: column; width: 120px; }
+        #health-bar-wrap { width: 100%; height: 8px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden; margin-top: 3px; }
+        #health-bar { width: 100%; height: 100%; background: #ffffff; transition: width 0.2s, background 0.3s; }
+
         #game-area { flex: 1; position: relative; z-index: 5; cursor: crosshair; overflow: hidden; }
-        
+
         /* The Viruses (Target Bubbles) */
         .virus {
             position: absolute; border-radius: 50%; display: flex; align-items: center;
@@ -40,7 +79,7 @@
             0% { border-radius: 40% 60% 60% 40% / 40% 40% 60% 60%; }
             100% { border-radius: 60% 40% 40% 60% / 60% 60% 40% 40%; }
         }
-        
+
         /* Pop Explosion Effect */
         .splash {
             position: absolute; pointer-events: none; border-radius: 50%;
@@ -51,7 +90,7 @@
             50% { opacity: 0.8; }
             100% { transform: scale(2.5); opacity: 0; border: 1px solid currentColor; background: currentColor; filter: blur(5px); }
         }
-        
+
         /* Start Menu Overlay */
         #menu-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -61,7 +100,7 @@
         }
         .bold-banner { font-size: 3rem; font-weight: 900; text-transform: uppercase; color: #ff3366; letter-spacing: 4px; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255, 51, 102, 0.6); }
         .subtitle { color: #8a8fbc; margin-bottom: 30px; max-width: 400px; font-size: 1rem; }
-        
+
         /* The Big "Tap to Play" Button */
         .btn {
             background: linear-gradient(135deg, #ff3366, #ff6633); color: white; border: none;
@@ -71,19 +110,45 @@
         }
         .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(255, 51, 102, 0.6); }
         .btn:active { transform: translateY(1px); }
+
+        @media (max-width: 600px) {
+            .title { font-size: 0.9rem; }
+            .stats { gap: 10px; }
+            .stat-box { padding: 4px 8px; }
+            .bold-banner { font-size: 2.1rem; }
+            .intro-text { font-size: 1.8rem; }
+            .intro-sub { letter-spacing: 3px; font-size: 0.7rem; }
+        }
     </style>
 </head>
 <body>
+    <div id="intro-screen">
+        <div class="intro-text">Firewall Defender</div>
+        <div class="intro-sub">SYSTEM BOOT SEQUENCE</div>
+    </div>
+
     <div id="grid-bg"></div>
     <header>
-        <div class="title">Virus Attack</div>
+        <div class="brand">
+            <div class="title">Virus Attack</div>
+            <div class="high-score">High Score: <span id="high-score-val">0</span></div>
+        </div>
         <div class="stats">
-            <div>SCORE: <span id="score-val">0</span></div>
-            <div>LIVES: <span id="lives-val">5</span></div>
+            <div class="stat-box">
+                <div class="stat-label">Score</div>
+                <div class="stat-val" id="score-val" style="color:#ff3366;">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Lives</div>
+                <div class="stat-val" id="lives-val" style="color:#33ff66;">5</div>
+            </div>
+            <div id="health-container">
+                <div class="stat-label">Shield</div>
+                <div id="health-bar-wrap"><div id="health-bar"></div></div>
+            </div>
         </div>
     </header>
     <div id="game-area">
-        <!-- Start Screen Overlay -->
         <div id="menu-overlay">
             <h1 class="bold-banner" id="menu-title">Virus Attack</h1>
             <p class="subtitle" id="menu-sub">System compromised. Purge the viral anomalies before they breach the core infrastructure.</p>
@@ -98,92 +163,121 @@
               menuOverlay = document.getElementById('menu-overlay'),
               startBtn = document.getElementById('start-btn'),
               menuTitle = document.getElementById('menu-title'),
-              menuSub = document.getElementById('menu-sub');
+              menuSub = document.getElementById('menu-sub'),
+              healthBar = document.getElementById('health-bar'),
+              introScreen = document.getElementById('intro-screen'),
+              highScoreVal = document.getElementById('high-score-val');
 
         let score = 0, lives = 5, gameActive = false, spawnInterval, virusId = 0, spawnRate = 1200;
+        let highScore = Number(localStorage.getItem('virusHighScore')) || 0;
         const virusColors = ['#ff3366', '#33ff66', '#3366ff', '#ffff33', '#00ffff', '#ff00ff'];
 
-        // Triggered when clicking the giant button
+        function updateHud() {
+            scoreVal.textContent = score;
+            livesVal.textContent = lives;
+            const healthPct = Math.max(0, (lives / 5) * 100);
+            healthBar.style.width = `${healthPct}%`;
+            healthBar.style.background = healthPct > 60 ? '#33ff66' : healthPct > 30 ? '#ffff33' : '#ff3366';
+        }
+
+        function hideIntro() {
+            if (introScreen) {
+                introScreen.style.opacity = '0';
+                setTimeout(() => introScreen.style.display = 'none', 1000);
+            }
+        }
+
         function startGame() {
             score = 0; lives = 5; spawnRate = 1200; gameActive = true;
-            scoreVal.textContent = score; livesVal.textContent = lives;
+            updateHud();
             menuOverlay.style.display = 'none';
             document.body.style.backgroundColor = '#0d0e15';
             clearInterval(spawnInterval);
+            hideIntro();
             gameLoop();
         }
 
         function gameLoop() {
             if (!gameActive) return;
             spawnVirus();
-            let currentRate = Math.max(400, spawnRate - (score * 15)); // Gets faster as score goes up
+            let currentRate = Math.max(400, spawnRate - (score * 15));
             clearInterval(spawnInterval);
             spawnInterval = setInterval(gameLoop, currentRate);
         }
 
-        // Creates target bubbles on the screen
         function spawnVirus() {
             if (!gameActive) return;
             const virus = document.createElement('div');
             virus.classList.add('virus');
             const size = Math.floor(Math.random() * 40) + 50,
                   color = virusColors[Math.floor(Math.random() * virusColors.length)];
-            
+
             virus.style.width = `${size}px`; virus.style.height = `${size}px`; virus.style.color = color;
             virus.style.background = `radial-gradient(circle, rgba(13, 14, 21, 0.8) 20%, ${color} 100%)`;
             virus.style.border = `2px solid ${color}`;
-            
+
             const maxX = gameArea.clientWidth - size, maxY = gameArea.clientHeight - size;
             virus.style.left = `${Math.floor(Math.random() * maxX)}px`;
             virus.style.top = `${Math.floor(Math.random() * maxY)}px`;
-            
+
             const id = virusId++; virus.dataset.id = id;
             const survivalTime = Math.max(1500, 4000 - (score * 50));
-            
-            // Penalty timer if player misses the tap
+
             const timeout = setTimeout(() => {
                 if (document.body.contains(virus)) { virus.remove(); loseLife(); }
             }, survivalTime);
 
-            // Tapping/Clicking the virus targets
-            virus.addEventListener('touchstart', (e) => { e.preventDefault(); killVirus(virus, color, timeout); });
+            virus.addEventListener('touchstart', (e) => { e.preventDefault(); killVirus(virus, color, timeout); }, { passive: false });
             virus.addEventListener('mousedown', () => { killVirus(virus, color, timeout); });
             gameArea.appendChild(virus);
         }
 
-        // Successfully popping a virus
         function killVirus(virus, color, timeout) {
             if (!gameActive) return;
             clearTimeout(timeout);
-            document.body.style.backgroundColor = color + '15'; // Screen flash color
+            document.body.style.backgroundColor = color + '15';
             setTimeout(() => { if (gameActive) document.body.style.backgroundColor = '#0d0e15'; }, 200);
-            
+
             const rect = virus.getBoundingClientRect(), areaRect = gameArea.getBoundingClientRect();
             const splash = document.createElement('div');
             splash.classList.add('splash'); splash.style.color = color;
             splash.style.width = virus.style.width; splash.style.height = virus.style.height;
             splash.style.left = `${rect.left - areaRect.left}px`; splash.style.top = `${rect.top - areaRect.top}px`;
-            
+
             gameArea.appendChild(splash);
             setTimeout(() => splash.remove(), 500);
-            virus.remove(); score += 10; scoreVal.textContent = score;
+            virus.remove();
+            score += 10;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('virusHighScore', String(highScore));
+                highScoreVal.textContent = highScore;
+            }
+            updateHud();
         }
 
         function loseLife() {
-            lives--; livesVal.textContent = lives;
+            lives--; updateHud();
             if (lives === 0) endGame();
         }
 
         function endGame() {
             gameActive = false; clearInterval(spawnInterval);
             document.querySelectorAll('.virus').forEach(v => v.remove());
-            menuTitle.textContent = "SYSTEM CRASH"; menuTitle.style.color = "#ff3333";
+            menuTitle.textContent = 'SYSTEM CRASH'; menuTitle.style.color = '#ff3333';
             menuSub.innerHTML = `Infection successful.<br><strong style="font-size:1.5rem; color:#fff;">FINAL SCORE: ${score}</strong>`;
-            startBtn.textContent = "REBOOT & PURGE"; menuOverlay.style.display = 'flex';
+            startBtn.textContent = 'REBOOT & PURGE'; menuOverlay.style.display = 'flex';
         }
 
+        highScoreVal.textContent = highScore;
+        updateHud();
         startBtn.addEventListener('click', startGame);
+
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                hideIntro();
+            }, 4200);
+        });
     </script>
 </body>
-  </html>
-
+</html>
